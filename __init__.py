@@ -1,45 +1,37 @@
-import json
+from products import dao
 
-import products
-from cart import dao
-from products import Product
-
-
-class Cart:
-    def __init__(self, id: int, username: str, contents: list[Product], cost: float):
+class Product:
+    def __init__(self, id: int, name: str, description: str, cost: float, qty: int = 0):
         self.id = id
-        self.username = username
-        self.contents = contents
+        self.name = name
+        self.description = description
         self.cost = cost
+        self.qty = qty
 
-    @staticmethod
-    def load(data):
-        return Cart(data['id'], data['username'], data['contents'], data['cost'])
-
-
-def get_cart(username: str) -> list:
-    cart_details = dao.get_cart(username)
-    if cart_details is None:
-        return []
-    
-    # Directly parse the contents without eval, assuming 'contents' is a JSON-encoded list
-    items = []
-    for cart_detail in cart_details:
-        # Assuming contents is a JSON-encoded string, use json.loads to parse it
-        contents = json.loads(cart_detail['contents'])
-        items.extend(contents)  # Flatten the list of contents
-
-    # Fetch all products in one batch instead of looping and calling `get_product` each time
-    products_batch = products.get_products(items)  # Assuming this function exists for batch retrieval
-    return products_batch
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Creates a Product instance from a dictionary."""
+        return cls(data['id'], data['name'], data['description'], data['cost'], data['qty'])
 
 
-def add_to_cart(username: str, product_id: int):
-    dao.add_to_cart(username, product_id)
+def list_products() -> list[Product]:
+    """Fetches and returns a list of Product instances."""
+    return [Product.from_dict(product) for product in dao.list_products()]
 
 
-def remove_from_cart(username: str, product_id: int):
-    dao.remove_from_cart(username, product_id)
+def get_product(product_id: int) -> Product:
+    """Fetches and returns a single Product instance by ID."""
+    product_data = dao.get_product(product_id)
+    return Product.from_dict(product_data)
 
-def delete_cart(username: str):
-    dao.delete_cart(username)
+
+def add_product(product: dict):
+    """Adds a new product to the database."""
+    dao.add_product(product)
+
+
+def update_qty(product_id: int, qty: int):
+    """Updates the quantity of a product by ID. Raises an error for negative values."""
+    if qty < 0:
+        raise ValueError('Quantity cannot be negative')
+    dao.update_qty(product_id, qty)
